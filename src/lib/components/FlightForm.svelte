@@ -64,6 +64,7 @@
 			on:input={handleTimeChange}
 			on:keydown={handleKeyDown}
 			class:error={timeError}
+			autofocus
 		/>
 		{#if timeError}
 			<div class="error-message">{timeError}</div>
