@@ -1,5 +1,9 @@
 // controls.ts
-export let travelMode: google.maps.TravelMode;
+let travelMode: google.maps.TravelMode;
+
+export function getTravelMode(): google.maps.TravelMode {
+    return travelMode;
+}
 
 /**
  * Creates travel mode controls (buttons) and returns the container element.
@@ -8,6 +12,8 @@ export let travelMode: google.maps.TravelMode;
 export function createTravelModeControls(
     onChange: (newMode: google.maps.TravelMode) => void
 ): HTMLElement {
+    travelMode = google.maps.TravelMode.TRANSIT;
+
     const div = document.createElement("div");
     div.style.backgroundColor = "white";
     div.style.border = "2px solid rgba(0, 0, 0, 0.2)";

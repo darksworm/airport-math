@@ -1,22 +1,17 @@
-import { Loader } from "@googlemaps/js-api-loader";
+import {Loader} from "@googlemaps/js-api-loader";
+import {markerEvents, updateUserMarker,} from "./markers";
+import {createTravelModeControls, getTravelMode} from "./controls";
+import {findAndDisplayNearbyAirports} from "./airportFinder";
 import KmlMouseEvent = google.maps.KmlMouseEvent;
-import {
-    createAirportMarkerElement,
-    LatLngLiteral,
-    markerEvents,
-    updateUserMarker,
-} from "./markers";
-import { createTravelModeControls, travelMode as controlsTravelMode } from "./controls";
 
 // Globals for our map and travel mode.
 let map: google.maps.Map;
-let currentUserLocation: LatLngLiteral | null = null;
+let currentUserLocation: google.maps.LatLngLiteral | null = null;
 // We'll always use the travel mode defined in controls.ts
-let currentTravelMode = controlsTravelMode;
 
 let directionsRenderer: google.maps.DirectionsRenderer | null = null;
 // We'll keep track of the currently selected airport (its location) to re-calc the route.
-let activeAirportLocation: LatLngLiteral | null = null;
+let activeAirportLocation: google.maps.LatLngLiteral | null = null;
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 if (!apiKey) {
@@ -45,9 +40,6 @@ async function initializeApp() {
             loader.importLibrary("marker"),
         ]);
 
-        // Now safe to assign default travel mode.
-        currentTravelMode = controlsTravelMode;
-
         map = new google.maps.Map(mapElement, {
             zoom: 10,
             mapId: "TestMap",
@@ -56,10 +48,9 @@ async function initializeApp() {
         // Add travel mode controls to the top center of the map.
         map.controls[google.maps.ControlPosition.TOP_CENTER].push(
             createTravelModeControls((newMode: google.maps.TravelMode) => {
-                currentTravelMode = newMode;
                 // If an airport is selected, re-calculate the route.
                 if (currentUserLocation && activeAirportLocation) {
-                    showRoute(currentUserLocation, activeAirportLocation);
+                    showRoute(currentUserLocation, activeAirportLocation, newMode);
                 }
             })
         );
@@ -84,7 +75,7 @@ async function initializeApp() {
         // Map click listener to update the user marker.
         map.addListener("click", (event: KmlMouseEvent) => {
             if (event.latLng) {
-                const loc = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+                const loc = {lat: event.latLng.lat(), lng: event.latLng.lng()};
                 currentUserLocation = loc;
                 updateUserMarker(map, loc);
             }
@@ -97,7 +88,7 @@ async function initializeApp() {
 }
 
 function handleGeolocationSuccess(pos: GeolocationPosition) {
-    const location: LatLngLiteral = {
+    const location: google.maps.LatLngLiteral = {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude,
     };
@@ -106,7 +97,7 @@ function handleGeolocationSuccess(pos: GeolocationPosition) {
     map.setZoom(12);
     updateUserMarker(map, location);
     // Trigger nearby airports search.
-    findAndDisplayNearbyAirports(location);
+    findAndDisplayNearbyAirports(map, currentUserLocation);
 }
 
 function handleGeolocationError(error: GeolocationPositionError) {
@@ -127,7 +118,7 @@ function setupMarkerEvents() {
         console.log("Airport selected:", detail);
         activeAirportLocation = detail.location;
         if (currentUserLocation && activeAirportLocation) {
-            showRoute(currentUserLocation, activeAirportLocation);
+            showRoute(currentUserLocation, activeAirportLocation, getTravelMode());
         }
     });
 }
@@ -135,15 +126,15 @@ function setupMarkerEvents() {
 /**
  * Calculates and displays a route on the map using the Directions Service.
  */
-function showRoute(from: LatLngLiteral, to: LatLngLiteral) {
+function showRoute(from: google.maps.LatLngLiteral, to: google.maps.LatLngLiteral, travelMode: google.maps.TravelMode) {
     const directionsService = new google.maps.DirectionsService();
     directionsService.route(
         {
             origin: from,
             destination: to,
-            travelMode: currentTravelMode,
-            ...(currentTravelMode === google.maps.TravelMode.TRANSIT && {
-                transitOptions: { departureTime: new Date() },
+            travelMode: travelMode,
+            ...(travelMode === google.maps.TravelMode.TRANSIT && {
+                transitOptions: {departureTime: new Date()},
             }),
         },
         (result, status) => {
@@ -154,89 +145,6 @@ function showRoute(from: LatLngLiteral, to: LatLngLiteral) {
             }
         }
     );
-}
-
-/**
- * Adjusts map bounds to fit given locations.
- */
-function fitMapToBounds(locations: LatLngLiteral[]) {
-    if (locations.length === 0) return;
-    const bounds = new google.maps.LatLngBounds();
-    locations.forEach((loc) => {
-        bounds.extend(new google.maps.LatLng(loc.lat, loc.lng));
-    });
-    if (locations.length > 1) {
-        map.fitBounds(bounds, 50);
-    } else {
-        map.setCenter(locations[0]);
-        map.setZoom(12);
-    }
-}
-
-/**
- * Searches for nearby airports and displays markers for each.
- */
-async function findAndDisplayNearbyAirports(location: LatLngLiteral) {
-    try {
-        const airports = await findNearbyAirports(location);
-        console.log(`Found ${airports.length} nearby commercial airports.`);
-        const locs: LatLngLiteral[] = [location];
-
-        airports.forEach((place) => {
-            if (place.geometry?.location) {
-                const pos: LatLngLiteral = {
-                    lat: place.geometry.location.lat(),
-                    lng: place.geometry.location.lng(),
-                };
-                // Here we call the imported createAirportMarkerElement function.
-                new google.maps.marker.AdvancedMarkerElement({
-                    position: place.geometry.location,
-                    map,
-                    title: place.name || "Airport",
-                    content: createAirportMarkerElement(place.name || "Airport", pos),
-                });
-                locs.push(pos);
-            }
-        });
-        fitMapToBounds(locs);
-    } catch (error) {
-        console.error("Error finding or displaying airports:", error);
-    }
-}
-
-/**
- * Performs a nearby search for commercial airports.
- */
-function findNearbyAirports(
-    location: LatLngLiteral
-): Promise<google.maps.places.PlaceResult[]> {
-    if (!map) return Promise.reject("Map object not initialized");
-    const service = new google.maps.places.PlacesService(map);
-    return new Promise((resolve, reject) => {
-        service.nearbySearch(
-            {
-                location,
-                radius: 50000, // 50km
-                type: "airport",
-                keyword: "commercial",
-            },
-            (results, status) => {
-                if (
-                    status === google.maps.places.PlacesServiceStatus.OK &&
-                    results
-                ) {
-                    resolve(results);
-                } else if (
-                    status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS
-                ) {
-                    resolve([]);
-                } else {
-                    console.error("PlacesService nearbySearch failed:", status);
-                    reject(`PlacesService Error: ${status}`);
-                }
-            }
-        );
-    });
 }
 
 // Start the application.
