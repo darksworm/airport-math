@@ -113,47 +113,104 @@ function createUserMarker() {
     return markerContainer;
 }
 
+// --- Global reference for the active airport marker container ---
+let activeAirportMarkerContainer: HTMLElement | null = null;
+
+/**
+ * Updates the styling for an airport marker's indicator based on its active state.
+ *
+ * @param container The overall airport marker container.
+ * @param active True to style it as active, false otherwise.
+ */
+function setAirportMarkerActive(container: HTMLElement, active: boolean): void {
+    // Assume the first child's first child is the indicator.
+    const innerContainer = container.firstElementChild as HTMLElement;
+    if (!innerContainer) return;
+    const indicator = innerContainer.firstElementChild as HTMLElement;
+    if (indicator) {
+        if (active) {
+            // When active, change the background from reddish (#E91E63) to green.
+            indicator.style.background = "green";
+            // Optionally, adjust border or shadow if needed:
+            indicator.style.border = "2px solid white";
+            indicator.style.boxShadow = "0 0 8px green";
+        } else {
+            // Default inactive styles
+            indicator.style.background = "#E91E63";
+            indicator.style.border = "2px solid white";
+            indicator.style.boxShadow = "0 0 4px rgba(0, 0, 0, 0.3)";
+        }
+    }
+}
+
 function createAirportMarker(airportName: string): HTMLElement {
-    // Container with fixed size so its center is the actual location point
+    // Outer container: larger than the visible marker so the click area is big.
     const markerContainer = document.createElement("div");
     markerContainer.style.position = "relative";
-    markerContainer.style.width = "20px";
-    markerContainer.style.height = "20px";
+    markerContainer.style.width = "40px"; // larger click area
+    markerContainer.style.height = "40px";
+    // Optionally, set background to transparent if needed:
+    markerContainer.style.backgroundColor = "transparent";
+    // Ensure pointer events register on this container.
+    markerContainer.style.cursor = "pointer";
 
-    // Create a differently styled indicator (using a red/pinkish color)
+    // Inner container: fixed at 20x20 and centered in the outer container.
+    const innerContainer = document.createElement("div");
+    innerContainer.style.position = "absolute";
+    innerContainer.style.width = "20px";
+    innerContainer.style.height = "20px";
+    innerContainer.style.top = "50%";
+    innerContainer.style.left = "50%";
+    innerContainer.style.transform = "translate(-50%, -50%)";
+
+    // Create the indicator (red circle)
     const indicator = document.createElement("div");
-    indicator.style.position = "absolute";
-    indicator.style.top = "50%";
-    indicator.style.left = "50%";
-    indicator.style.transform = "translate(-50%, -50%)";
-    indicator.style.background = "#E91E63"; // A reddish color
+    indicator.style.background = "#E91E63"; // reddish color
     indicator.style.border = "2px solid white";
     indicator.style.borderRadius = "50%";
     indicator.style.width = "20px";
     indicator.style.height = "20px";
     indicator.style.boxShadow = "0 0 4px rgba(0, 0, 0, 0.3)";
+    // Append the indicator to the inner container.
+    innerContainer.appendChild(indicator);
 
-    // Create the label that shows the airport code.
+    // Create the label element and position it below the indicator.
     const label = document.createElement("div");
     label.style.position = "absolute";
-    label.style.top = "100%"; // Immediately below the indicator
+    label.style.top = "100%"; // immediately below the 20x20 inner container
     label.style.left = "50%";
     label.style.transform = "translateX(-50%)";
     label.style.whiteSpace = "nowrap";
-    label.style.background = "rgba(255, 255, 255, 0.8)"; // Slightly transparent
+    label.style.background = "rgba(255, 255, 255, 0.8)";
     label.style.color = "#333";
-    label.style.fontSize = "10px";
+    label.style.fontSize = "12px";
     label.style.padding = "1px 3px";
     label.style.borderRadius = "3px";
     label.style.marginTop = "2px";
-    label.style.fontSize = "12px";
     label.textContent = airportName;
 
-    // Use the container's title for the full airport name for additional context.
+    // Append the label inside the inner container so that it moves with the indicator.
+    innerContainer.appendChild(label);
+
+    // Append the inner container to the outer container.
+    markerContainer.appendChild(innerContainer);
+
+    // Set the title attribute for a tooltip.
     markerContainer.title = airportName;
 
-    markerContainer.appendChild(indicator);
-    markerContainer.appendChild(label);
+    markerContainer.addEventListener("click", (event) => {
+        event.stopPropagation();
+        // If another airport marker is active, reset its style.
+        if (activeAirportMarkerContainer && activeAirportMarkerContainer !== markerContainer) {
+            setAirportMarkerActive(activeAirportMarkerContainer, false);
+        }
+        const isAlreadyActive = activeAirportMarkerContainer === markerContainer;
+        if (!isAlreadyActive) {
+            setAirportMarkerActive(markerContainer, true);
+            activeAirportMarkerContainer = markerContainer;
+            // Perform additional actions for airport selection here.
+        }
+    });
 
     return markerContainer;
 }
