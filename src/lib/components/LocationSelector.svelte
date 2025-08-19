@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { locationStore } from '$lib/stores/location';
 	import { onMount, onDestroy } from 'svelte';
+	import MapPicker from './MapPicker.svelte';
+	import AddressSearch from './AddressSearch.svelte';
+	import type { Location } from '$lib/stores/location';
 
-	export let onLocationUpdate: ((location: any) => void) | undefined = undefined;
+	export let onLocationUpdate: ((location: Location, address?: string) => void) | undefined = undefined;
+	export let autoDetect: boolean = true;
 
-	let location: any = null;
+	let location: Location | null = null;
 	let loading: boolean = false;
 	let error: string | null = null;
-	let hasNotifiedParent = false;
+	let showMap: boolean = false;
 
 	let unsubscribe: (() => void) | null = null;
 
@@ -23,16 +27,18 @@
 			loading = storeValue.loading;
 			error = storeValue.error;
 			
-			// Call parent whenever we have a location (simple and direct)
-			if (storeValue.location && onLocationUpdate) {
+			// Call parent whenever we have a location (but not during manual selection)
+			if (storeValue.location && onLocationUpdate && !isManualSelection) {
 				console.log('LocationSelector: Location available, calling onLocationUpdate with', storeValue.location);
 				onLocationUpdate(storeValue.location);
 			}
 		});
 
-		// Auto-detect location on mount
-		console.log('LocationSelector: Calling getCurrentLocation');
-		locationStore.getCurrentLocation();
+		// Auto-detect location on mount (if enabled)
+		if (autoDetect) {
+			console.log('LocationSelector: Calling getCurrentLocation');
+			locationStore.getCurrentLocation();
+		}
 	});
 
 	onDestroy(() => {
@@ -45,10 +51,38 @@
 		locationStore.clearError();
 		locationStore.getCurrentLocation();
 	}
+
+	let isManualSelection = false;
+	
+	function handleManualLocation(newLocation: Location, selectedAddress?: string) {
+		// Set flag to prevent store subscription from calling parent
+		isManualSelection = true;
+		
+		// Update the store with the manually selected location
+		locationStore.setLocation(newLocation);
+		
+		if (onLocationUpdate) {
+			onLocationUpdate(newLocation, selectedAddress);
+		}
+		
+		// Reset flag after a brief delay
+		setTimeout(() => {
+			isManualSelection = false;
+		}, 100);
+	}
+
+	function toggleMap() {
+		showMap = !showMap;
+	}
 </script>
 
 <div class="location-selector">
 	<h2>📍 Your Location</h2>
+	
+	<!-- Address Search -->
+	<div class="search-section">
+		<AddressSearch onLocationSelect={(loc, addr) => handleManualLocation(loc, addr)} />
+	</div>
 	
 	{#if loading}
 		<div class="loading-state">
@@ -67,9 +101,28 @@
 			<p class="success-text">
 				✅ Located: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
 			</p>
+		</div>
+	{/if}
+
+	<!-- Show location controls whenever we have a location -->
+	{#if location}
+		<div class="action-buttons">
 			<button class="update-button" on:click={() => locationStore.getCurrentLocation()}>
-				Update Location
+				📍 Use GPS
 			</button>
+			<button class="map-button" on:click={toggleMap}>
+				🗺️ {showMap ? 'Hide Map' : 'Show Map'}
+			</button>
+		</div>
+	{/if}
+
+	<!-- Map Section -->
+	{#if showMap && location}
+		<div class="map-section">
+			<MapPicker 
+				{location} 
+				onLocationChange={(loc) => handleManualLocation(loc)} 
+			/>
 		</div>
 	{/if}
 </div>
@@ -121,17 +174,25 @@
 		margin: 0;
 	}
 
+	.search-section {
+		margin-bottom: 16px;
+	}
+
 	.success-state {
 		display: flex;
-		justify-content: space-between;
-		align-items: center;
+		flex-direction: column;
 		gap: 12px;
 	}
 
 	.success-text {
 		color: #34c759;
 		margin: 0;
-		flex: 1;
+	}
+
+	.action-buttons {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
 	}
 
 	button {
@@ -162,9 +223,29 @@
 		background: #34c759;
 		font-size: 12px;
 		padding: 6px 12px;
+		flex: 1;
+		min-width: 100px;
 	}
 
 	.update-button:hover {
 		background: #248a3d;
+	}
+
+	.map-button {
+		background: #007aff;
+		font-size: 12px;
+		padding: 6px 12px;
+		flex: 1;
+		min-width: 100px;
+	}
+
+	.map-button:hover {
+		background: #0056b3;
+	}
+
+	.map-section {
+		margin-top: 16px;
+		border-top: 1px solid #eee;
+		padding-top: 16px;
 	}
 </style>

@@ -91,10 +91,20 @@ function createLocationStore() {
 		update(state => ({ ...state, error: null }));
 	}
 
+	function setLocation(location: Location | null): void {
+		update(state => ({
+			...state,
+			location,
+			loading: false,
+			error: null
+		}));
+	}
+
 	return {
 		subscribe,
 		getCurrentLocation,
-		clearError
+		clearError,
+		setLocation
 	};
 }
 

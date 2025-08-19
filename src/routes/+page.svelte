@@ -7,14 +7,17 @@
 	import StepSummary from '$lib/components/StepSummary.svelte';
 	
 	import type { Location } from '$lib/stores/location';
+	import { locationStore } from '$lib/stores/location';
 	import type { Airport, FlightInfo, TransportMode, RouteInfo } from '$lib/types/airport';
 	import { findNearbyAirports } from '$lib/services/airports';
 	import { calculateMultipleRoutes, formatDuration } from '$lib/services/routing';
 	import { calculateDepartureTime } from '$lib/services/departure';
+	import { geocodingService } from '$lib/services/geocoding';
 	import { onMount } from 'svelte';
 
 	// State
 	let userLocation: Location | null = null;
+	let userLocationAddress: string = '';
 	let nearbyAirports: Airport[] = [];
 	let selectedAirport: Airport | null = null;
 	let flightInfo: FlightInfo | null = null;
@@ -28,12 +31,41 @@
 	let airportsError: string | null = null;
 
 	// Handle location update
-	async function handleLocationUpdate(location: Location) {
-		console.log('MAIN PAGE: handleLocationUpdate called with:', location);
+	async function handleLocationUpdate(location: Location, selectedAddress?: string) {
+		console.log('MAIN PAGE: handleLocationUpdate called with:', location, selectedAddress);
+		// Only exit editing mode if we have a selectedAddress (user made a new selection)
+		if (selectedAddress !== undefined) {
+			editingLocation = false; // Reset editing mode
+		}
 		userLocation = location;
 		console.log('MAIN PAGE: userLocation set to:', userLocation);
+		
+		// Use selected address or get human-readable address
+		if (selectedAddress) {
+			userLocationAddress = selectedAddress;
+		} else {
+			await updateLocationAddress(location);
+		}
+		
 		await loadNearbyAirports();
 		console.log('MAIN PAGE: loadNearbyAirports completed, nearbyAirports:', nearbyAirports);
+	}
+
+	// Update location address
+	async function updateLocationAddress(location: Location) {
+		try {
+			const result = await geocodingService.reverseGeocode(location.lat, location.lng);
+			if (result) {
+				userLocationAddress = result.address 
+					? geocodingService.formatAddress(result.address)
+					: result.display_name;
+			} else {
+				userLocationAddress = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+			}
+		} catch (error) {
+			console.error('Failed to get location address:', error);
+			userLocationAddress = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+		}
 	}
 
 	// Load nearby airports
@@ -125,14 +157,20 @@
 		return step;
 	}
 
+	let editingLocation = false;
+
 	function resetStep(step: number) {
 		if (step === 1) {
-			userLocation = null;
+			editingLocation = true;
+			// Keep userLocation and userLocationAddress so map controls can be shown
+			// Reset other steps
 			nearbyAirports = [];
 			selectedAirport = null;
 			flightInfo = null;
 			selectedRoute = null;
 			departureCalculation = null;
+			// Keep the current location in the store so LocationSelector shows map controls
+			// locationStore.setLocation(null);
 		} else if (step === 2) {
 			selectedAirport = null;
 			flightInfo = null;
@@ -165,12 +203,15 @@
 
 	<main class="app-main">
 		<!-- Step 1: Location -->
-		{#if currentStep === 1}
-			<LocationSelector onLocationUpdate={handleLocationUpdate} />
+		{#if currentStep === 1 || editingLocation}
+			<LocationSelector 
+				onLocationUpdate={(loc, addr) => handleLocationUpdate(loc, addr)} 
+				autoDetect={!editingLocation}
+			/>
 		{:else if userLocation}
 			<StepSummary 
 				title="Location" 
-				summary="📍 {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}"
+				summary="📍 {userLocationAddress || `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`}"
 				icon="✅"
 				onEdit={() => resetStep(1)}
 			/>
