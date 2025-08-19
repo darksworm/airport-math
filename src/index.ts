@@ -113,6 +113,51 @@ function createUserMarker() {
     return markerContainer;
 }
 
+function createAirportMarker(airportName: string): HTMLElement {
+    // Container with fixed size so its center is the actual location point
+    const markerContainer = document.createElement("div");
+    markerContainer.style.position = "relative";
+    markerContainer.style.width = "20px";
+    markerContainer.style.height = "20px";
+
+    // Create a differently styled indicator (using a red/pinkish color)
+    const indicator = document.createElement("div");
+    indicator.style.position = "absolute";
+    indicator.style.top = "50%";
+    indicator.style.left = "50%";
+    indicator.style.transform = "translate(-50%, -50%)";
+    indicator.style.background = "#E91E63"; // A reddish color
+    indicator.style.border = "2px solid white";
+    indicator.style.borderRadius = "50%";
+    indicator.style.width = "20px";
+    indicator.style.height = "20px";
+    indicator.style.boxShadow = "0 0 4px rgba(0, 0, 0, 0.3)";
+
+    // Create the label that shows the airport code.
+    const label = document.createElement("div");
+    label.style.position = "absolute";
+    label.style.top = "100%"; // Immediately below the indicator
+    label.style.left = "50%";
+    label.style.transform = "translateX(-50%)";
+    label.style.whiteSpace = "nowrap";
+    label.style.background = "rgba(255, 255, 255, 0.8)"; // Slightly transparent
+    label.style.color = "#333";
+    label.style.fontSize = "10px";
+    label.style.padding = "1px 3px";
+    label.style.borderRadius = "3px";
+    label.style.marginTop = "2px";
+    label.style.fontSize = "12px";
+    label.textContent = airportName;
+
+    // Use the container's title for the full airport name for additional context.
+    markerContainer.title = airportName;
+
+    markerContainer.appendChild(indicator);
+    markerContainer.appendChild(label);
+
+    return markerContainer;
+}
+
 // --- Geolocation Handlers ---
 async function handleGeolocationSuccess(pos: GeolocationPosition) {
     const userLocation: LatLngLiteral = {
@@ -169,6 +214,7 @@ async function findAndDisplayNearbyAirports(location: LatLngLiteral) {
                     position: place.geometry.location,
                     map,
                     title: place.name || "Airport",
+                    content: createAirportMarker(place.name || "Airport")
                 });
 
                 // Prepare for bounds calculation
