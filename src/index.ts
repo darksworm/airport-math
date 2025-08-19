@@ -3,6 +3,7 @@ import {markerEvents, updateUserMarker,} from "./markers";
 import {createTravelModeControls, getTravelMode} from "./controls";
 import {findAndDisplayNearbyAirports} from "./airportFinder";
 import KmlMouseEvent = google.maps.KmlMouseEvent;
+import PlaceResult = google.maps.places.PlaceResult;
 
 // Globals for our map and travel mode.
 let map: google.maps.Map;
@@ -11,7 +12,7 @@ let currentUserLocation: google.maps.LatLngLiteral | null = null;
 
 let directionsRenderer: google.maps.DirectionsRenderer | null = null;
 // We'll keep track of the currently selected airport (its location) to re-calc the route.
-let activeAirportLocation: google.maps.LatLngLiteral | null = null;
+let activeAirportLocation: google.maps.places.PlaceResult | null = null;
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 if (!apiKey) {
@@ -50,13 +51,15 @@ async function initializeApp() {
             createTravelModeControls((newMode: google.maps.TravelMode) => {
                 // If an airport is selected, re-calculate the route.
                 if (currentUserLocation && activeAirportLocation) {
-                    showRoute(currentUserLocation, activeAirportLocation, newMode);
+                    showRoute(currentUserLocation, {placeId: activeAirportLocation.place_id}, newMode);
                 }
             })
         );
 
         // Initialize the DirectionsRenderer.
-        directionsRenderer = new google.maps.DirectionsRenderer();
+        directionsRenderer = new google.maps.DirectionsRenderer({
+            suppressMarkers: true
+        });
         directionsRenderer.setMap(map);
 
         // Listen to marker events.
@@ -116,9 +119,10 @@ function setupMarkerEvents() {
     markerEvents.addEventListener("airportSelected", (e: Event) => {
         const detail = (e as CustomEvent).detail;
         console.log("Airport selected:", detail);
-        activeAirportLocation = detail.location;
+        activeAirportLocation = detail.place as PlaceResult;
+        console.log("aal",activeAirportLocation);
         if (currentUserLocation && activeAirportLocation) {
-            showRoute(currentUserLocation, activeAirportLocation, getTravelMode());
+            showRoute(currentUserLocation, {placeId: activeAirportLocation.place_id}, getTravelMode());
         }
     });
 }
@@ -126,7 +130,7 @@ function setupMarkerEvents() {
 /**
  * Calculates and displays a route on the map using the Directions Service.
  */
-function showRoute(from: google.maps.LatLngLiteral, to: google.maps.LatLngLiteral, travelMode: google.maps.TravelMode) {
+function showRoute(from: google.maps.LatLngLiteral, to: google.maps.Place, travelMode: google.maps.TravelMode) {
     const directionsService = new google.maps.DirectionsService();
     directionsService.route(
         {

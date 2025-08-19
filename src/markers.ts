@@ -55,20 +55,13 @@ export function createUserMarkerElement(): HTMLElement {
  * Create an airport marker element.
  * When clicked it dispatches an "airportSelected" event with detail {airportName, location}.
  */
-export function createAirportMarkerElement(
-    airportName: string,
-    airportPosition: LatLngLiteral
-): HTMLElement {
+export function createAirportMarkerElement(place: google.maps.places.PlaceResult): HTMLElement {
     const markerContainer = document.createElement("div");
     markerContainer.style.position = "relative";
     markerContainer.style.width = "40px"; // Larger click area.
     markerContainer.style.height = "40px";
     markerContainer.style.backgroundColor = "transparent";
     markerContainer.style.cursor = "pointer";
-
-    // Save the airport coordinates in our dataset.
-    markerContainer.dataset.lat = airportPosition.lat.toString();
-    markerContainer.dataset.lng = airportPosition.lng.toString();
 
     const innerContainer = document.createElement("div");
     innerContainer.style.position = "absolute";
@@ -101,11 +94,11 @@ export function createAirportMarkerElement(
     label.style.padding = "1px 3px";
     label.style.borderRadius = "3px";
     label.style.marginTop = "2px";
-    label.textContent = airportName;
+    label.textContent = place.name ?? "unknown airport";
     innerContainer.appendChild(label);
 
     markerContainer.appendChild(innerContainer);
-    markerContainer.title = airportName;
+    markerContainer.title = place.name ?? "unknown airport";
 
     // When clicked, dispatch an event with the airport details.
     markerContainer.addEventListener("click", (e) => {
@@ -114,7 +107,7 @@ export function createAirportMarkerElement(
         const lng = parseFloat(markerContainer.dataset.lng!);
         markerEvents.dispatchEvent(
             new CustomEvent("airportSelected", {
-                detail: { airportName, location: { lat, lng } },
+                detail: { place: place },
             })
         );
     });

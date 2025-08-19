@@ -64,7 +64,7 @@ export async function findAndDisplayNearbyAirports(
                     position: place.geometry.location,
                     map,
                     title: place.name || "Airport",
-                    content: createAirportMarkerElement(place.name || "Airport", pos),
+                    content: createAirportMarkerElement(place),
                 });
                 locs.push(pos);
             }
