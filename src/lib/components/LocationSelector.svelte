@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { locationStore } from '$lib/stores/location';
 	import { onMount, onDestroy } from 'svelte';
-	import MapPicker from './MapPicker.svelte';
 	import AddressSearch from './AddressSearch.svelte';
 	import type { Location } from '$lib/stores/location';
 
@@ -11,7 +10,6 @@
 	let location: Location | null = null;
 	let loading: boolean = false;
 	let error: string | null = null;
-	let showMap: boolean = false;
 
 	let unsubscribe: (() => void) | null = null;
 
@@ -47,11 +45,6 @@
 		}
 	});
 
-	function handleRetry() {
-		locationStore.clearError();
-		locationStore.getCurrentLocation();
-	}
-
 	let isManualSelection = false;
 	
 	function handleManualLocation(newLocation: Location, selectedAddress?: string) {
@@ -70,10 +63,6 @@
 			isManualSelection = false;
 		}, 100);
 	}
-
-	function toggleMap() {
-		showMap = !showMap;
-	}
 </script>
 
 <div class="location-selector">
@@ -87,42 +76,18 @@
 	{#if loading}
 		<div class="loading-state">
 			<div class="spinner"></div>
-			<p>Getting your location...</p>
+			<p>Detecting your location...</p>
 		</div>
 	{:else if error}
 		<div class="error-state">
 			<p class="error-text">❌ {error}</p>
-			<button class="retry-button" on:click={handleRetry}>
-				Try Again
-			</button>
+			<p class="help-text">Please search for your address above</p>
 		</div>
 	{:else if location}
 		<div class="success-state">
 			<p class="success-text">
-				✅ Located: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+				✅ Location detected
 			</p>
-		</div>
-	{/if}
-
-	<!-- Show location controls whenever we have a location -->
-	{#if location}
-		<div class="action-buttons">
-			<button class="update-button" on:click={() => locationStore.getCurrentLocation()}>
-				📍 Use GPS
-			</button>
-			<button class="map-button" on:click={toggleMap}>
-				🗺️ {showMap ? 'Hide Map' : 'Show Map'}
-			</button>
-		</div>
-	{/if}
-
-	<!-- Map Section -->
-	{#if showMap && location}
-		<div class="map-section">
-			<MapPicker 
-				{location} 
-				onLocationChange={(loc) => handleManualLocation(loc)} 
-			/>
 		</div>
 	{/if}
 </div>
@@ -174,6 +139,12 @@
 		margin: 0;
 	}
 
+	.help-text {
+		color: #666;
+		margin: 8px 0 0 0;
+		font-size: 14px;
+	}
+
 	.search-section {
 		margin-bottom: 16px;
 	}
@@ -187,65 +158,5 @@
 	.success-text {
 		color: #34c759;
 		margin: 0;
-	}
-
-	.action-buttons {
-		display: flex;
-		gap: 8px;
-		flex-wrap: wrap;
-	}
-
-	button {
-		background: #007aff;
-		color: white;
-		border: none;
-		padding: 8px 16px;
-		border-radius: 6px;
-		font-size: 14px;
-		cursor: pointer;
-		transition: background-color 0.2s;
-	}
-
-	button:hover {
-		background: #0056b3;
-	}
-
-	.retry-button {
-		background: #ff3b30;
-		align-self: flex-start;
-	}
-
-	.retry-button:hover {
-		background: #d70015;
-	}
-
-	.update-button {
-		background: #34c759;
-		font-size: 12px;
-		padding: 6px 12px;
-		flex: 1;
-		min-width: 100px;
-	}
-
-	.update-button:hover {
-		background: #248a3d;
-	}
-
-	.map-button {
-		background: #007aff;
-		font-size: 12px;
-		padding: 6px 12px;
-		flex: 1;
-		min-width: 100px;
-	}
-
-	.map-button:hover {
-		background: #0056b3;
-	}
-
-	.map-section {
-		margin-top: 16px;
-		border-top: 1px solid #eee;
-		padding-top: 16px;
 	}
 </style>
