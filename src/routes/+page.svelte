@@ -237,13 +237,12 @@
 		{#if currentStep === 3 || editingFlight}
 			<FlightForm 
 				flightTime={flightInfo?.departureTime || ''}
-				isInternational={flightInfo?.isInternational || false}
 				onFlightInfoChange={handleFlightInfoChange}
 			/>
 		{:else if flightInfo}
 			<StepSummary 
 				title="Flight" 
-				summary="{flightInfo.departureTime} ({flightInfo.isInternational ? 'International' : 'Domestic'})"
+				summary="Departure: {flightInfo.departureTime}"
 				icon="✅"
 				onEdit={() => resetStep(3)}
 			/>

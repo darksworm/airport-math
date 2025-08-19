@@ -17,9 +17,8 @@ export function calculateDepartureTime(
 	// Parse flight time
 	const flightTime = new Date(`${new Date().toDateString()} ${flightInfo.departureTime}`);
 	
-	// Determine check-in buffer based on flight type
-	// According to PDF: 2 hours domestic, 3 hours international
-	const checkInBuffer = flightInfo.isInternational ? 3 : 2;
+	// Use 2 hours check-in buffer for all flights
+	const checkInBuffer = 2;
 	
 	// Calculate total minutes needed before flight
 	const checkInMinutes = checkInBuffer * 60;

@@ -2,7 +2,6 @@
 	import { isValidFlightTime } from '$lib/services/departure';
 
 	export let flightTime: string = '';
-	export let isInternational: boolean = false;
 	export let onFlightInfoChange: ((info: any) => void) | undefined = undefined;
 
 	let timeError = '';
@@ -22,11 +21,6 @@
 		// Don't auto-notify - wait for explicit confirmation
 	}
 
-	function handleInternationalChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		isInternational = target.checked;
-		// Don't auto-notify - wait for explicit confirmation
-	}
 	
 	function handleConfirm() {
 		if (flightTime && !timeError) {
@@ -45,7 +39,6 @@
 		if (onFlightInfoChange && flightTime && !timeError) {
 			onFlightInfoChange({
 				departureTime: flightTime,
-				isInternational,
 				selectedAirport: null // This will be set by parent
 			});
 		}
@@ -71,34 +64,6 @@
 		{/if}
 	</div>
 
-	<div class="form-group checkbox-group">
-		<label class="checkbox-label">
-			<input
-				type="checkbox"
-				bind:checked={isInternational}
-				on:change={handleInternationalChange}
-			/>
-			<span class="checkbox-text">
-				International Flight
-				<small>International flights require 3h check-in, domestic flights 2h</small>
-			</span>
-		</label>
-	</div>
-
-	<div class="info-box">
-		<div class="info-item">
-			<span class="info-label">Check-in Buffer:</span>
-			<span class="info-value">
-				{isInternational ? '3 hours' : '2 hours'}
-			</span>
-		</div>
-		<div class="info-item">
-			<span class="info-label">Flight Type:</span>
-			<span class="info-value">
-				{isInternational ? 'International' : 'Domestic'}
-			</span>
-		</div>
-	</div>
 	
 	<div class="form-actions">
 		<button 
@@ -161,66 +126,6 @@
 		margin-top: 4px;
 	}
 
-	.checkbox-group {
-		margin-bottom: 16px;
-	}
-
-	.checkbox-label {
-		display: flex;
-		align-items: flex-start;
-		gap: 12px;
-		cursor: pointer;
-		font-weight: normal;
-		margin-bottom: 0;
-	}
-
-	input[type="checkbox"] {
-		margin: 0;
-		width: 18px;
-		height: 18px;
-		accent-color: #007aff;
-		flex-shrink: 0;
-		margin-top: 2px;
-	}
-
-	.checkbox-text {
-		flex: 1;
-	}
-
-	.checkbox-text small {
-		display: block;
-		color: #666;
-		font-size: 0.85em;
-		margin-top: 4px;
-	}
-
-	.info-box {
-		background: #f8f9fa;
-		border-radius: 8px;
-		padding: 16px;
-		border-left: 4px solid #007aff;
-	}
-
-	.info-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 8px;
-	}
-
-	.info-item:last-child {
-		margin-bottom: 0;
-	}
-
-	.info-label {
-		color: #666;
-		font-size: 0.9em;
-	}
-
-	.info-value {
-		font-weight: 600;
-		color: #333;
-	}
 	
 	.form-actions {
 		margin-top: 20px;

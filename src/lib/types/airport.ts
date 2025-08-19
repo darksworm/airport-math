@@ -23,7 +23,6 @@ export interface NearbyAirportsResult {
 
 export interface FlightInfo {
 	departureTime: string;
-	isInternational: boolean;
 	selectedAirport: Airport | null;
 }
 
