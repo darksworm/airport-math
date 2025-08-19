@@ -101,6 +101,7 @@
 	// Handle flight info change
 	async function handleFlightInfoChange(info: FlightInfo) {
 		flightInfo = { ...info, selectedAirport };
+		editingFlight = false; // Exit editing mode
 		updateDepartureCalculation();
 	}
 
@@ -118,13 +119,7 @@
 				selectedAirport.longitude
 			);
 			
-			// Auto-select the fastest route (driving usually)
-			if (availableRoutes.length > 0) {
-				const fastestRoute = availableRoutes.reduce((fastest, current) => 
-					current.duration < fastest.duration ? current : fastest
-				);
-				handleModeSelect(fastestRoute.mode, fastestRoute);
-			}
+			// Don't auto-select - let user choose their preferred transport mode
 		} catch (error) {
 			console.error('Error calculating routes:', error);
 		} finally {
@@ -158,13 +153,13 @@
 	}
 
 	let editingLocation = false;
+	let editingFlight = false;
 
 	function resetStep(step: number) {
 		if (step === 1) {
 			editingLocation = true;
 			// Keep userLocation and userLocationAddress so map controls can be shown
-			// Reset other steps
-			nearbyAirports = [];
+			// Reset later steps only
 			selectedAirport = null;
 			flightInfo = null;
 			selectedRoute = null;
@@ -172,15 +167,18 @@
 			// Keep the current location in the store so LocationSelector shows map controls
 			// locationStore.setLocation(null);
 		} else if (step === 2) {
-			selectedAirport = null;
+			// Reset later steps only, keep current step data for editing
 			flightInfo = null;
 			selectedRoute = null;
 			departureCalculation = null;
 		} else if (step === 3) {
-			flightInfo = null;
+			// Enter flight editing mode, keep flight data for editing
+			editingFlight = true;
+			// Reset later steps only
 			selectedRoute = null;
 			departureCalculation = null;
 		} else if (step === 4) {
+			// Reset later steps only
 			selectedRoute = null;
 			departureCalculation = null;
 		}
@@ -236,8 +234,10 @@
 		{/if}
 
 		<!-- Step 3: Flight Information -->
-		{#if currentStep === 3}
+		{#if currentStep === 3 || editingFlight}
 			<FlightForm 
+				flightTime={flightInfo?.departureTime || ''}
+				isInternational={flightInfo?.isInternational || false}
 				onFlightInfoChange={handleFlightInfoChange}
 			/>
 		{:else if flightInfo}

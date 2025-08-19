@@ -6,6 +6,7 @@
 	export let onFlightInfoChange: ((info: any) => void) | undefined = undefined;
 
 	let timeError = '';
+	let notifyTimeout: number | null = null;
 
 	function handleTimeChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -18,13 +19,26 @@
 			timeError = '';
 		}
 		
-		notifyChange();
+		// Don't auto-notify - wait for explicit confirmation
 	}
 
 	function handleInternationalChange(event: Event) {
 		const target = event.target as HTMLInputElement;
 		isInternational = target.checked;
-		notifyChange();
+		// Don't auto-notify - wait for explicit confirmation
+	}
+	
+	function handleConfirm() {
+		if (flightTime && !timeError) {
+			notifyChange();
+		}
+	}
+	
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			handleConfirm();
+		}
 	}
 
 	function notifyChange() {
@@ -48,6 +62,7 @@
 			type="time"
 			bind:value={flightTime}
 			on:input={handleTimeChange}
+			on:keydown={handleKeyDown}
 			class:error={timeError}
 		/>
 		{#if timeError}
@@ -82,6 +97,16 @@
 				{isInternational ? 'International' : 'Domestic'}
 			</span>
 		</div>
+	</div>
+	
+	<div class="form-actions">
+		<button 
+			class="confirm-button" 
+			on:click={handleConfirm}
+			disabled={!flightTime || !!timeError}
+		>
+			✈️ Confirm Flight Details
+		</button>
 	</div>
 </div>
 
@@ -194,5 +219,35 @@
 	.info-value {
 		font-weight: 600;
 		color: #333;
+	}
+	
+	.form-actions {
+		margin-top: 20px;
+		display: flex;
+		justify-content: center;
+	}
+	
+	.confirm-button {
+		background: #007aff;
+		color: white;
+		border: none;
+		padding: 12px 24px;
+		border-radius: 8px;
+		font-size: 16px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s;
+		min-width: 200px;
+	}
+	
+	.confirm-button:hover:not(:disabled) {
+		background: #0056b3;
+		transform: translateY(-1px);
+	}
+	
+	.confirm-button:disabled {
+		background: #ccc;
+		cursor: not-allowed;
+		transform: none;
 	}
 </style>
