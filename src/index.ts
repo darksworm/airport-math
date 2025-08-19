@@ -1,4 +1,4 @@
-import { Loader } from "@googlemaps/js-api-loader";
+import {Loader} from "@googlemaps/js-api-loader";
 import KmlMouseEvent = google.maps.KmlMouseEvent;
 
 // --- Types ---
@@ -71,6 +71,48 @@ async function initializeApp() {
     }
 }
 
+function createUserMarker() {
+    // Create the main container with fixed size (same as the circle)
+    const markerContainer = document.createElement('div');
+    markerContainer.style.position = "relative";
+    markerContainer.style.width = "20px"; // Circle's width
+    markerContainer.style.height = "20px"; // Circle's height
+
+    // Create the location indicator (blue circle) and center it in the container
+    const indicator = document.createElement("div");
+    indicator.style.position = "absolute";
+    indicator.style.top = "50%";
+    indicator.style.left = "50%";
+    indicator.style.transform = "translate(-50%, -50%)";
+    indicator.style.background = "#2196F3";       // Blue color
+    indicator.style.border = "2px solid white";     // White border for contrast
+    indicator.style.borderRadius = "50%";           // Circular shape
+    indicator.style.width = "20px";
+    indicator.style.height = "20px";
+    indicator.style.boxShadow = "0 0 4px rgba(0, 0, 0, 0.3)";
+
+    // Create the label element and position it below the circle without affecting the container size
+    const label = document.createElement("div");
+    label.style.position = "absolute";
+    label.style.top = "100%";                      // Place right below the circle
+    label.style.left = "50%";
+    label.style.transform = "translateX(-50%)";
+    label.style.whiteSpace = "nowrap";             // Prevent the text from wrapping
+    label.style.background = "white";
+    label.style.color = "#333";
+    label.style.fontSize = "12px";
+    label.style.padding = "2px 4px";
+    label.style.borderRadius = "4px";
+    label.style.marginTop = "4px";
+    label.textContent = "You are here";
+
+    // Append both the indicator and the label to the container
+    markerContainer.appendChild(indicator);
+    markerContainer.appendChild(label);
+
+    return markerContainer;
+}
+
 // --- Geolocation Handlers ---
 async function handleGeolocationSuccess(pos: GeolocationPosition) {
     const userLocation: LatLngLiteral = {
@@ -84,10 +126,13 @@ async function handleGeolocationSuccess(pos: GeolocationPosition) {
 
     // Remove existing marker if any, then add the user marker
     if (userMarker) userMarker.map = null;
+
+    // Create the AdvancedMarkerElement with the custom content
     userMarker = new google.maps.marker.AdvancedMarkerElement({
         position: userLocation,
         map,
         title: "You are here",
+        content: createUserMarker()
     });
 
     // Find and display commercial airports nearby
