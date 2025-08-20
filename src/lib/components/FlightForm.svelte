@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { isValidFlightTime } from '$lib/services/departure';
+	import ModernTimeInput from './ModernTimeInput.svelte';
 
 	export let flightTime: string = '';
 	export let onFlightInfoChange: ((info: any) => void) | undefined = undefined;
@@ -7,9 +8,8 @@
 	let timeError = '';
 	let notifyTimeout: number | null = null;
 
-	function handleTimeChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		flightTime = target.value;
+	function handleTimeChange(event: CustomEvent) {
+		flightTime = event.detail;
 		
 		// Validate time
 		if (flightTime && !isValidFlightTime(flightTime)) {
@@ -48,21 +48,11 @@
 <div class="flight-form">
 	<h2>🛫 Flight Information</h2>
 	
-	<div class="form-group">
-		<label for="flight-time">Departure Time</label>
-		<input
-			id="flight-time"
-			type="time"
-			bind:value={flightTime}
-			on:input={handleTimeChange}
-			on:keydown={handleKeyDown}
-			class:error={timeError}
-			autofocus
-		/>
-		{#if timeError}
-			<div class="error-message">{timeError}</div>
-		{/if}
-	</div>
+	<ModernTimeInput 
+		value={flightTime}
+		error={timeError}
+		on:change={handleTimeChange}
+	/>
 
 	
 	<div class="form-actions">
