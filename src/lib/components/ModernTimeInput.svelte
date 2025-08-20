@@ -8,6 +8,8 @@
 	
 	let hours: string = '';
 	let minutes: string = '';
+	let hourInput: HTMLInputElement;
+	let minuteInput: HTMLInputElement;
 	
 	// Debug: log the locale for troubleshooting
 	console.log('Browser locale:', navigator.language || navigator.languages?.[0] || 'unknown');
@@ -53,6 +55,14 @@
 		if (parseInt(val) < 0 && val.length === 2) val = '0';
 		
 		hours = val;
+		
+		// Auto-advance to minutes when hour is complete
+		if (val.length === 2 || (val.length === 1 && parseInt(val) > 2)) {
+			setTimeout(() => {
+				minuteInput?.focus();
+			}, 10);
+		}
+		
 		handleTimeChange();
 	}
 	
@@ -63,6 +73,30 @@
 		if (parseInt(val) > 59) val = '59';
 		minutes = val;
 		handleTimeChange();
+	}
+	
+	function handleKeyDown(event: KeyboardEvent, field: 'hour' | 'minute') {
+		const target = event.target as HTMLInputElement;
+		
+		// Handle backspace when field is empty - go to previous field
+		if (event.key === 'Backspace' && target.value === '' && field === 'minute') {
+			event.preventDefault();
+			hourInput?.focus();
+			// Put cursor at end of hour field
+			setTimeout(() => {
+				if (hourInput) {
+					hourInput.setSelectionRange(hourInput.value.length, hourInput.value.length);
+				}
+			}, 10);
+		}
+		
+		// Handle tab/enter to advance to next field
+		if (event.key === 'Tab' || event.key === 'Enter') {
+			if (field === 'hour' && target.value.length > 0) {
+				event.preventDefault();
+				minuteInput?.focus();
+			}
+		}
 	}
 	
 	
@@ -81,7 +115,9 @@
 				<input
 					type="text"
 					bind:value={hours}
+					bind:this={hourInput}
 					on:input={handleHourChange}
+					on:keydown={(e) => handleKeyDown(e, 'hour')}
 					placeholder="16"
 					class="time-input hour-input"
 					maxlength="2"
@@ -96,7 +132,9 @@
 				<input
 					type="text"
 					bind:value={minutes}
+					bind:this={minuteInput}
 					on:input={handleMinuteChange}
+					on:keydown={(e) => handleKeyDown(e, 'minute')}
 					placeholder="30"
 					class="time-input minute-input"
 					maxlength="2"
