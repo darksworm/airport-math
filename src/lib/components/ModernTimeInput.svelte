@@ -9,21 +9,20 @@
 	let hours: string = '';
 	let minutes: string = '';
 	let isPM: boolean = false;
-	let inputMode: 'picker' | 'manual' = 'picker';
-	
 	// Detect user's time format preference (12h vs 24h)
 	const use24Hour = (() => {
-		try {
-			const testDate = new Date('2023-01-01 13:00');
-			const timeString = testDate.toLocaleTimeString(undefined, { 
-				hour: 'numeric',
-				minute: '2-digit'
-			});
-			return !timeString.includes('PM') && !timeString.includes('AM');
-		} catch {
-			// Default to 24-hour if detection fails
-			return true;
+		// Get user's locale
+		const locale = navigator.language || navigator.languages?.[0] || 'en-US';
+		
+		// Force 24-hour for European and most other locales
+		const americanLocales = ['en-US', 'en-CA', 'es-MX'];
+		
+		if (americanLocales.some(l => locale.startsWith(l.split('-')[0]) && locale.includes('US'))) {
+			return false; // Use 12-hour for US locales
 		}
+		
+		// Everyone else gets 24-hour (Europe, Asia, etc.)
+		return true;
 	})();
 	
 	// Parse initial value
@@ -109,37 +108,6 @@
 		handleTimeChange();
 	}
 	
-	function setPresetTime(time: string) {
-		const [h, m] = time.split(':');
-		const hour = parseInt(h);
-		
-		if (use24Hour) {
-			hours = hour.toString();
-		} else {
-			if (hour === 0) {
-				hours = '12';
-				isPM = false;
-			} else if (hour <= 12) {
-				hours = hour.toString();
-				isPM = false;
-			} else {
-				hours = (hour - 12).toString();
-				isPM = true;
-			}
-		}
-		
-		minutes = m;
-		handleTimeChange();
-	}
-	
-	const commonTimes = [
-		{ label: 'Early Morning', times: ['06:00', '07:00', '08:00'] },
-		{ label: 'Morning', times: ['09:00', '10:00', '11:00'] },
-		{ label: 'Midday', times: ['12:00', '13:00', '14:00'] },
-		{ label: 'Afternoon', times: ['15:00', '16:00', '17:00'] },
-		{ label: 'Evening', times: ['18:00', '19:00', '20:00'] },
-		{ label: 'Night', times: ['21:00', '22:00', '23:00'] }
-	];
 </script>
 
 <div class="modern-time-input">
@@ -148,81 +116,43 @@
 		<span class="label-hint">When does your flight leave?</span>
 	</label>
 	
-	<!-- Mode Toggle -->
-	<div class="mode-toggle">
-		<button 
-			class="mode-btn" 
-			class:active={inputMode === 'picker'}
-			on:click={() => inputMode = 'picker'}
-		>
-			🕐 Time Picker
-		</button>
-		<button 
-			class="mode-btn" 
-			class:active={inputMode === 'manual'}
-			on:click={() => inputMode = 'manual'}
-		>
-			⌨️ Quick Select
-		</button>
-	</div>
-	
-	{#if inputMode === 'picker'}
-		<!-- Custom Time Picker -->
-		<div class="time-picker">
-			<div class="time-display">
-				<div class="time-field">
-					<input
-						type="text"
-						bind:value={hours}
-						on:input={handleHourChange}
-						placeholder={use24Hour ? "14" : "12"}
-						class="time-input hour-input"
-						maxlength="2"
-					/>
-					<span class="field-label">Hour</span>
-				</div>
-				
-				<div class="time-separator">:</div>
-				
-				<div class="time-field">
-					<input
-						type="text"
-						bind:value={minutes}
-						on:input={handleMinuteChange}
-						placeholder="00"
-						class="time-input minute-input"
-						maxlength="2"
-					/>
-					<span class="field-label">Min</span>
-				</div>
-				
-				{#if !use24Hour}
-					<button class="ampm-toggle" class:pm={isPM} on:click={toggleAmPm}>
-						{isPM ? 'PM' : 'AM'}
-					</button>
-				{/if}
+	<!-- Custom Time Picker -->
+	<div class="time-picker">
+		<div class="time-display">
+			<div class="time-field">
+				<input
+					type="text"
+					bind:value={hours}
+					on:input={handleHourChange}
+					placeholder={use24Hour ? "14" : "12"}
+					class="time-input hour-input"
+					maxlength="2"
+					autofocus
+				/>
+				<span class="field-label">Hour</span>
 			</div>
+			
+			<div class="time-separator">:</div>
+			
+			<div class="time-field">
+				<input
+					type="text"
+					bind:value={minutes}
+					on:input={handleMinuteChange}
+					placeholder="00"
+					class="time-input minute-input"
+					maxlength="2"
+				/>
+				<span class="field-label">Min</span>
+			</div>
+			
+			{#if !use24Hour}
+				<button class="ampm-toggle" class:pm={isPM} on:click={toggleAmPm}>
+					{isPM ? 'PM' : 'AM'}
+				</button>
+			{/if}
 		</div>
-	{:else}
-		<!-- Quick Time Selection -->
-		<div class="quick-select">
-			{#each commonTimes as timeGroup}
-				<div class="time-group">
-					<div class="group-label">{timeGroup.label}</div>
-					<div class="time-buttons">
-						{#each timeGroup.times as time}
-							<button 
-								class="time-preset-btn"
-								on:click={() => setPresetTime(time)}
-							>
-								{time.split(':')[0]}:{time.split(':')[1]}
-							</button>
-						{/each}
-					</div>
-				</div>
-			{/each}
-		</div>
-	{/if}
+	</div>
 	
 	<!-- Current Selection Display -->
 	{#if value}
@@ -267,36 +197,6 @@
 		margin-top: 2px;
 	}
 
-	.mode-toggle {
-		display: flex;
-		gap: 8px;
-		margin: 16px 0;
-		background: #f8f9fa;
-		border-radius: 8px;
-		padding: 4px;
-	}
-
-	.mode-btn {
-		flex: 1;
-		background: transparent;
-		border: none;
-		padding: 8px 12px;
-		border-radius: 6px;
-		font-size: 0.9em;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		color: #666;
-	}
-
-	.mode-btn.active {
-		background: #007aff;
-		color: white;
-		box-shadow: 0 2px 4px rgba(0, 122, 255, 0.2);
-	}
-
-	.mode-btn:hover:not(.active) {
-		background: #e5e5e7;
-	}
 
 	.time-picker {
 		margin: 16px 0;
@@ -377,52 +277,6 @@
 		background: #ff9500;
 	}
 
-	.quick-select {
-		display: grid;
-		gap: 16px;
-		margin: 16px 0;
-	}
-
-	.time-group {
-		background: #f8f9fa;
-		border-radius: 12px;
-		padding: 16px;
-	}
-
-	.group-label {
-		font-size: 0.9em;
-		font-weight: 600;
-		color: #666;
-		margin-bottom: 12px;
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-	}
-
-	.time-buttons {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 8px;
-	}
-
-	.time-preset-btn {
-		background: white;
-		border: 1px solid #e5e5e7;
-		border-radius: 8px;
-		padding: 12px;
-		font-size: 1em;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		color: #333;
-	}
-
-	.time-preset-btn:hover {
-		background: #007aff;
-		color: white;
-		border-color: #007aff;
-		transform: translateY(-1px);
-		box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
-	}
 
 	.current-time {
 		background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
@@ -471,8 +325,5 @@
 			font-size: 1.5em;
 		}
 
-		.time-buttons {
-			grid-template-columns: repeat(2, 1fr);
-		}
 	}
 </style>
