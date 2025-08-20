@@ -1,29 +1,86 @@
-import type { DepartureCalculation, FlightInfo, RouteInfo } from '$lib/types/airport';
+import type { DepartureCalculation, FlightInfo, RouteInfo, DeparturePreferences } from '$lib/types/airport';
 
 /**
- * Calculate when to leave for the airport based on flight info and travel time
- * Formula: leave_time = flight_time - (travel_time + buffer)
+ * Calculate baggage processing time based on preferences and safety level
+ */
+function calculateBaggageTime(hasCheckedBags: boolean, safetyLevel: number): number {
+	if (!hasCheckedBags) return 0;
+	
+	// Base time for baggage: 15-30 minutes depending on safety level
+	const baseTime = 15;
+	const safetyMultiplier = (safetyLevel - 1) * 3.75; // 0-15 minutes extra
+	return Math.round(baseTime + safetyMultiplier);
+}
+
+/**
+ * Calculate security and passport time based on preferences and safety level
+ */
+function calculateSecurityTime(needsPassport: boolean, safetyLevel: number): { security: number, passport: number } {
+	// Base security time: 15-45 minutes depending on safety level
+	const baseSecurityTime = 15;
+	const securitySafetyMultiplier = (safetyLevel - 1) * 7.5; // 0-30 minutes extra
+	const securityTime = Math.round(baseSecurityTime + securitySafetyMultiplier);
+	
+	// Passport control time: 20-45 minutes if needed
+	let passportTime = 0;
+	if (needsPassport) {
+		const basePassportTime = 20;
+		const passportSafetyMultiplier = (safetyLevel - 1) * 6.25; // 0-25 minutes extra
+		passportTime = Math.round(basePassportTime + passportSafetyMultiplier);
+	}
+	
+	return { security: securityTime, passport: passportTime };
+}
+
+/**
+ * Calculate safety buffer based on safety level
+ */
+function calculateSafetyBuffer(safetyLevel: number): number {
+	// Safety buffer: 5-25 minutes based on level
+	const baseBuffer = 5;
+	const levelMultiplier = (safetyLevel - 1) * 5; // 0-20 minutes extra
+	return baseBuffer + levelMultiplier;
+}
+
+/**
+ * Calculate when to leave for the airport with detailed preferences
  * 
- * @param flightInfo Flight details including time and international status
+ * @param flightInfo Flight details including departure time
  * @param routeInfo Travel route information including duration
- * @param safetyMargin Additional minutes to add as safety buffer (default: 15)
- * @returns Complete departure calculation
+ * @param preferences User preferences for baggage, passport, safety level, etc.
+ * @returns Complete departure calculation with detailed breakdown
  */
 export function calculateDepartureTime(
 	flightInfo: FlightInfo,
 	routeInfo: RouteInfo,
-	safetyMargin: number = 15
+	preferences?: DeparturePreferences
 ): DepartureCalculation {
 	// Parse flight time
 	const flightTime = new Date(`${new Date().toDateString()} ${flightInfo.departureTime}`);
 	
-	// Use 2 hours check-in buffer for all flights
-	const checkInBuffer = 2;
+	// Use default preferences if none provided
+	const prefs = preferences || {
+		hasCheckedBags: false,
+		needsPassportControl: false,
+		safetyMarginLevel: 3,
+		additionalBuffer: 0
+	};
 	
-	// Calculate total minutes needed before flight
+	// Base check-in buffer: 2 hours for all flights
+	const checkInBuffer = 2;
 	const checkInMinutes = checkInBuffer * 60;
+	
+	// Calculate each component
 	const travelMinutes = routeInfo.duration;
-	const totalMinutesNeeded = checkInMinutes + travelMinutes + safetyMargin;
+	const baggageTime = calculateBaggageTime(prefs.hasCheckedBags, prefs.safetyMarginLevel);
+	const { security: securityTime, passport: passportTime } = calculateSecurityTime(prefs.needsPassportControl, prefs.safetyMarginLevel);
+	const safetyBuffer = calculateSafetyBuffer(prefs.safetyMarginLevel);
+	
+	// Total buffer time (everything except travel)
+	const totalBuffer = checkInMinutes + baggageTime + securityTime + passportTime + safetyBuffer + prefs.additionalBuffer;
+	
+	// Calculate total time needed before flight
+	const totalMinutesNeeded = travelMinutes + totalBuffer;
 	
 	// Calculate leave time
 	const leaveTime = new Date(flightTime.getTime() - (totalMinutesNeeded * 60 * 1000));
@@ -35,8 +92,21 @@ export function calculateDepartureTime(
 		flightTime,
 		checkInBuffer,
 		travelTime: travelMinutes,
+		baggageTime,
+		securityTime,
+		passportTime,
+		safetyBuffer,
+		totalBuffer,
 		leaveTime,
-		arrivalDeadline
+		arrivalDeadline,
+		breakdown: {
+			travel: travelMinutes,
+			checkIn: checkInMinutes,
+			baggage: baggageTime,
+			security: securityTime,
+			passport: passportTime,
+			safety: safetyBuffer + prefs.additionalBuffer
+		}
 	};
 }
 

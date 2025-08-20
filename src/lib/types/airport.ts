@@ -40,10 +40,30 @@ export interface RouteInfo {
 	instructions?: string[];
 }
 
+export interface DeparturePreferences {
+	hasCheckedBags: boolean;
+	needsPassportControl: boolean;
+	safetyMarginLevel: number; // 1-5 scale (1=aggressive, 5=very conservative)
+	additionalBuffer: number; // extra minutes user wants
+}
+
 export interface DepartureCalculation {
 	flightTime: Date;
 	checkInBuffer: number; // hours
 	travelTime: number; // minutes
+	baggageTime: number; // minutes
+	securityTime: number; // minutes
+	passportTime: number; // minutes
+	safetyBuffer: number; // minutes
+	totalBuffer: number; // minutes
 	leaveTime: Date;
 	arrivalDeadline: Date;
+	breakdown: {
+		travel: number;
+		checkIn: number;
+		baggage: number;
+		security: number;
+		passport: number;
+		safety: number;
+	};
 }

@@ -3,12 +3,13 @@
 	import AirportSelector from '$lib/components/AirportSelector.svelte';
 	import FlightForm from '$lib/components/FlightForm.svelte';
 	import TransportSelector from '$lib/components/TransportSelector.svelte';
-	import DepartureResults from '$lib/components/DepartureResults.svelte';
+	import DeparturePlanner from '$lib/components/DeparturePlanner.svelte';
+	import DetailedDepartureResults from '$lib/components/DetailedDepartureResults.svelte';
 	import StepSummary from '$lib/components/StepSummary.svelte';
 	
 	import type { Location } from '$lib/stores/location';
 	import { locationStore } from '$lib/stores/location';
-	import type { Airport, FlightInfo, TransportMode, RouteInfo } from '$lib/types/airport';
+	import type { Airport, FlightInfo, TransportMode, RouteInfo, DeparturePreferences } from '$lib/types/airport';
 	import { findNearbyAirports } from '$lib/services/airports';
 	import { calculateMultipleRoutes, formatDuration } from '$lib/services/routing';
 	import { calculateDepartureTime } from '$lib/services/departure';
@@ -23,6 +24,7 @@
 	let flightInfo: FlightInfo | null = null;
 	let availableRoutes: RouteInfo[] = [];
 	let selectedRoute: RouteInfo | null = null;
+	let departurePreferences: DeparturePreferences | null = null;
 	let departureCalculation: any = null;
 
 	// Loading states
@@ -132,6 +134,12 @@
 		selectedRoute = route;
 		updateDepartureCalculation();
 	}
+	
+	// Handle departure preferences change
+	function handlePreferencesChange(preferences: DeparturePreferences) {
+		departurePreferences = preferences;
+		updateDepartureCalculation();
+	}
 
 	// Update departure calculation
 	function updateDepartureCalculation() {
@@ -140,15 +148,15 @@
 			return;
 		}
 
-		departureCalculation = calculateDepartureTime(flightInfo, selectedRoute);
+		departureCalculation = calculateDepartureTime(flightInfo, selectedRoute, departurePreferences);
 	}
 
 	// Wizard step management
 	$: currentStep = getCurrentStep(userLocation, selectedAirport, flightInfo, selectedRoute);
 
 	function getCurrentStep(userLoc: any, airport: any, flight: any, route: any): number {
-		const step = !userLoc ? 1 : !airport ? 2 : (!flight || !flight.departureTime) ? 3 : !route ? 4 : 5;
-		console.log('getCurrentStep:', { userLocation: userLoc, selectedAirport: airport, flightInfo: flight, selectedRoute: route, step });
+		const step = !userLoc ? 1 : !airport ? 2 : (!flight || !flight.departureTime) ? 3 : !route ? 4 : !departurePreferences ? 5 : 6;
+		console.log('getCurrentStep:', { userLocation: userLoc, selectedAirport: airport, flightInfo: flight, selectedRoute: route, departurePreferences, step });
 		return step;
 	}
 
@@ -163,6 +171,7 @@
 			selectedAirport = null;
 			flightInfo = null;
 			selectedRoute = null;
+			departurePreferences = null;
 			departureCalculation = null;
 			// Keep the current location in the store so LocationSelector shows map controls
 			// locationStore.setLocation(null);
@@ -170,16 +179,23 @@
 			// Reset later steps only, keep current step data for editing
 			flightInfo = null;
 			selectedRoute = null;
+			departurePreferences = null;
 			departureCalculation = null;
 		} else if (step === 3) {
 			// Enter flight editing mode, keep flight data for editing
 			editingFlight = true;
 			// Reset later steps only
 			selectedRoute = null;
+			departurePreferences = null;
 			departureCalculation = null;
 		} else if (step === 4) {
 			// Reset later steps only
 			selectedRoute = null;
+			departurePreferences = null;
+			departureCalculation = null;
+		} else if (step === 5) {
+			// Reset departure planning
+			departurePreferences = null;
 			departureCalculation = null;
 		}
 	}
@@ -264,9 +280,25 @@
 			/>
 		{/if}
 
-		<!-- Step 5: Results -->
-		{#if currentStep === 5 && departureCalculation && selectedRoute}
-			<DepartureResults 
+		<!-- Step 5: Departure Planning -->
+		{#if currentStep === 5 && flightInfo && selectedRoute}
+			<DeparturePlanner 
+				{flightInfo}
+				{selectedRoute}
+				onPreferencesChange={handlePreferencesChange}
+			/>
+		{:else if departurePreferences}
+			<StepSummary 
+				title="Planning" 
+				summary="Preferences configured"
+				icon="✅"
+				onEdit={() => resetStep(5)}
+			/>
+		{/if}
+
+		<!-- Step 6: Results -->
+		{#if currentStep === 6 && departureCalculation && selectedRoute}
+			<DetailedDepartureResults 
 				calculation={departureCalculation}
 				route={selectedRoute}
 			/>
