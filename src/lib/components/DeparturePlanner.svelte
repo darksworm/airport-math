@@ -34,11 +34,6 @@
 		preferences = preferences; // Trigger reactivity
 	}
 	
-	function handleAdditionalBufferChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		preferences.additionalBuffer = parseInt(target.value) || 0;
-		preferences = preferences; // Trigger reactivity
-	}
 	
 	$: currentSafetyLevel = safetyLevels.find(level => level.value === preferences.safetyMarginLevel) || safetyLevels[3];
 	
@@ -142,24 +137,6 @@
 			</div>
 		</div>
 		
-		<!-- Additional Buffer -->
-		<div class="section">
-			<h3>Personal Buffer</h3>
-			<p class="section-desc">Extra time you'd like to add (optional)</p>
-			
-			<div class="input-group">
-				<input
-					type="number"
-					min="0"
-					max="120"
-					step="5"
-					value={preferences.additionalBuffer}
-					on:input={handleAdditionalBufferChange}
-					class="buffer-input"
-				/>
-				<span class="input-suffix">minutes</span>
-			</div>
-		</div>
 	</div>
 	
 	<!-- Live Results Preview -->
@@ -383,31 +360,6 @@
 		font-size: 0.85em;
 	}
 
-	.input-group {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-	}
-
-	.buffer-input {
-		width: 80px;
-		padding: 8px 12px;
-		border: 1px solid #ddd;
-		border-radius: 6px;
-		font-size: 16px;
-		text-align: center;
-	}
-
-	.buffer-input:focus {
-		outline: none;
-		border-color: #007aff;
-		box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1);
-	}
-
-	.input-suffix {
-		color: #666;
-		font-size: 0.9em;
-	}
 
 	.flight-info {
 		margin-top: 20px;

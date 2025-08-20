@@ -6,148 +6,112 @@
 	
 	const dispatch = createEventDispatcher();
 	
-	let hours: string = '';
-	let minutes: string = '';
-	let hourInput: HTMLInputElement;
-	let minuteInput: HTMLInputElement;
+	let dropdownOpen = false;
+	let selectedHour = '12';
+	let selectedMinute = '00';
 	
-	// Debug: log the locale for troubleshooting
-	console.log('Browser locale:', navigator.language || navigator.languages?.[0] || 'unknown');
+	// Generate hour and minute options
+	const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+	const minutes = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
 	
 	// Parse initial value
-	$: if (value && value !== formatTime()) {
-		parseTimeValue(value);
+	$: {
+		if (value && value.includes(':')) {
+			const [h, m] = value.split(':');
+			selectedHour = h.padStart(2, '0');
+			selectedMinute = m.padStart(2, '0');
+		}
 	}
 	
-	function parseTimeValue(timeStr: string) {
-		if (!timeStr || !timeStr.includes(':')) return;
-		
-		const [h, m] = timeStr.split(':');
-		const hourNum = parseInt(h);
-		
-		// Always use 24-hour format now
-		hours = hourNum.toString();
-		minutes = m;
-	}
-	
-	function formatTime(): string {
-		if (!hours || !minutes) return '';
-		
-		const h = parseInt(hours);
-		// Always 24-hour format now
-		return `${h.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
-	}
-	
-	function handleTimeChange() {
-		const newValue = formatTime();
-		if (newValue && newValue !== value) {
+	// Update value when selections change
+	$: {
+		const newValue = `${selectedHour}:${selectedMinute}`;
+		if (newValue !== value && selectedHour && selectedMinute) {
 			dispatch('change', newValue);
 		}
 	}
 	
-	function handleHourChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		let val = target.value.replace(/\D/g, '');
-		if (val.length > 2) val = val.slice(-2);
-		
-		// 24-hour validation: 0-23
-		if (parseInt(val) > 23) val = '23';
-		if (parseInt(val) < 0 && val.length === 2) val = '0';
-		
-		hours = val;
-		
-		// Auto-advance to minutes when hour is complete
-		if (val.length === 2 || (val.length === 1 && parseInt(val) > 2)) {
-			setTimeout(() => {
-				minuteInput?.focus();
-			}, 10);
-		}
-		
-		handleTimeChange();
+	function openDropdown() {
+		dropdownOpen = true;
 	}
 	
-	function handleMinuteChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		let val = target.value.replace(/\D/g, '');
-		if (val.length > 2) val = val.slice(-2);
-		if (parseInt(val) > 59) val = '59';
-		minutes = val;
-		handleTimeChange();
+	function closeDropdown() {
+		dropdownOpen = false;
 	}
 	
-	function handleKeyDown(event: KeyboardEvent, field: 'hour' | 'minute') {
-		const target = event.target as HTMLInputElement;
-		
-		// Handle backspace when field is empty - go to previous field
-		if (event.key === 'Backspace' && target.value === '' && field === 'minute') {
+	function selectHour(hour: string) {
+		selectedHour = hour;
+	}
+	
+	function selectMinute(minute: string) {
+		selectedMinute = minute;
+		// Auto-close after minute selection for better UX
+		closeDropdown();
+	}
+	
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
 			event.preventDefault();
-			hourInput?.focus();
-			// Put cursor at end of hour field
-			setTimeout(() => {
-				if (hourInput) {
-					hourInput.setSelectionRange(hourInput.value.length, hourInput.value.length);
-				}
-			}, 10);
+			dispatch('submit', `${selectedHour}:${selectedMinute}`);
+			closeDropdown();
 		}
-		
-		// Handle tab/enter to advance to next field or submit
-		if (event.key === 'Tab' || event.key === 'Enter') {
-			if (field === 'hour' && target.value.length > 0) {
-				event.preventDefault();
-				minuteInput?.focus();
-			} else if (field === 'minute' && target.value.length > 0) {
-				// Submit the time when pressing Enter in the minutes field
-				event.preventDefault();
-				dispatch('submit', formatTime());
-			}
+		if (event.key === 'Escape') {
+			closeDropdown();
 		}
 	}
-	
-	
 </script>
 
-<div class="modern-time-input">
-	<label class="time-label">
-		✈️ Flight Departure Time
-		<span class="label-hint">When does your flight leave?</span>
-	</label>
-	
-	<!-- Custom Time Picker -->
-	<div class="time-picker">
-		<div class="time-display">
-			<div class="time-field">
-				<input
-					type="text"
-					bind:value={hours}
-					bind:this={hourInput}
-					on:input={handleHourChange}
-					on:keydown={(e) => handleKeyDown(e, 'hour')}
-					placeholder="16"
-					class="time-input hour-input"
-					maxlength="2"
-					autofocus
-				/>
-				<span class="field-label">Hour</span>
+<div class="modern-time-input" on:keydown={handleKeyDown}>
+	<div class="time-input-container">
+		<button 
+			class="time-display-input" 
+			class:open={dropdownOpen}
+			class:error={!!error}
+			on:click={openDropdown}
+		>
+			<span class="hour-display">{selectedHour}</span>
+			<span class="time-separator">:</span>
+			<span class="minute-display">{selectedMinute}</span>
+		</button>
+		
+		{#if dropdownOpen}
+			<div class="time-dropdown">
+				<div class="time-columns">
+					<div class="time-column">
+						<h4>Hour</h4>
+						<div class="options-list">
+							{#each hours as hour}
+								<button 
+									class="time-option"
+									class:selected={hour === selectedHour}
+									on:click={() => selectHour(hour)}
+								>
+									{hour}
+								</button>
+							{/each}
+						</div>
+					</div>
+					
+					<div class="column-separator"></div>
+					
+					<div class="time-column">
+						<h4>Minute</h4>
+						<div class="options-list">
+							{#each minutes as minute}
+								<button 
+									class="time-option"
+									class:selected={minute === selectedMinute}
+									on:click={() => selectMinute(minute)}
+								>
+									{minute}
+								</button>
+							{/each}
+						</div>
+					</div>
+				</div>
 			</div>
-			
-			<div class="time-separator">:</div>
-			
-			<div class="time-field">
-				<input
-					type="text"
-					bind:value={minutes}
-					bind:this={minuteInput}
-					on:input={handleMinuteChange}
-					on:keydown={(e) => handleKeyDown(e, 'minute')}
-					placeholder="30"
-					class="time-input minute-input"
-					maxlength="2"
-				/>
-				<span class="field-label">Min</span>
-			</div>
-		</div>
+		{/if}
 	</div>
-	
 	
 	{#if error}
 		<div class="error-message">{error}</div>
@@ -163,128 +127,138 @@
 		transition: border-color 0.3s ease;
 	}
 
-	.modern-time-input:focus-within {
-		border-color: #007aff;
-		box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
-	}
 
-	.time-label {
-		display: block;
-		font-size: 1.1em;
-		font-weight: 600;
-		color: #333;
-		margin-bottom: 4px;
-	}
-
-	.label-hint {
-		display: block;
-		font-size: 0.85em;
-		font-weight: 400;
-		color: #666;
-		margin-top: 2px;
-	}
-
-
-	.time-picker {
+	.time-input-container {
+		display: flex;
+		justify-content: center;
 		margin: 16px 0;
+		position: relative;
 	}
-
-	.time-display {
+	
+	.time-display-input {
+		width: 100%;
+		max-width: 200px;
+		padding: 16px 20px;
+		border: 2px solid #e5e5e7;
+		border-radius: 8px;
+		font-size: 1.4em;
+		font-weight: 600;
+		color: #007aff;
+		background: #f8f9fa;
+		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 12px;
-		background: #f8f9fa;
-		border-radius: 16px;
-		padding: 24px;
-		border: 1px solid #e5e5e7;
+		gap: 0;
+		transition: all 0.2s ease;
 	}
-
-	.time-field {
+	
+	.time-display-input:hover {
+		border-color: #007aff;
+		background: #f0f8ff;
+	}
+	
+	.time-display-input.open {
+		border-color: #007aff;
+		background: #f0f8ff;
+		box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+	}
+	
+	.time-display-input.error {
+		border-color: #ff3b30;
+		background: rgba(255, 59, 48, 0.05);
+	}
+	
+	.hour-display, .minute-display {
+		min-width: 2ch;
+		text-align: center;
+		font-variant-numeric: tabular-nums;
+	}
+	
+	.time-separator {
+		margin: 0 4px;
+		color: #007aff;
+	}
+	
+	.time-dropdown {
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		transform: translateX(-50%);
+		background: white;
+		border: 2px solid #007aff;
+		border-top: none;
+		border-radius: 0 0 12px 12px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		z-index: 100;
+		min-width: 300px;
+		max-height: 320px;
+		overflow: hidden;
+	}
+	
+	.time-columns {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		height: 100%;
+	}
+	
+	.time-column {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 8px;
+		height: 100%;
 	}
-
-	.time-input {
-		width: 60px;
-		height: 60px;
-		background: white;
-		border: 2px solid #e5e5e7;
-		border-radius: 12px;
-		text-align: center;
-		font-size: 1.5em;
-		font-weight: 600;
-		color: #333;
-		transition: all 0.2s ease;
-	}
-
-	.time-input:focus {
-		outline: none;
-		border-color: #007aff;
-		box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
-		transform: scale(1.05);
-	}
-
-	.time-separator {
-		font-size: 2em;
-		font-weight: 600;
-		color: #007aff;
-		margin: 0 8px;
-	}
-
-	.field-label {
-		font-size: 0.8em;
+	
+	.time-column h4 {
+		margin: 0;
+		padding: 12px;
+		background: #f8f9fa;
+		border-bottom: 1px solid #e5e5e7;
+		font-size: 0.9em;
 		color: #666;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
+		text-align: center;
+		font-weight: 600;
 	}
-
-	.ampm-toggle {
+	
+	.options-list {
+		max-height: 240px;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+	}
+	
+	.time-option {
+		border: none;
+		background: none;
+		padding: 10px 16px;
+		cursor: pointer;
+		font-size: 1em;
+		color: #333;
+		transition: background-color 0.2s;
+		text-align: center;
+		font-variant-numeric: tabular-nums;
+		min-height: 40px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.time-option:hover {
+		background: #f0f8ff;
+	}
+	
+	.time-option.selected {
 		background: #007aff;
 		color: white;
-		border: none;
-		border-radius: 12px;
-		padding: 12px 16px;
-		font-size: 1.2em;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		min-width: 60px;
-	}
-
-	.ampm-toggle:hover {
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-	}
-
-	.ampm-toggle.pm {
-		background: #ff9500;
-	}
-
-
-	.current-time {
-		background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
-		color: white;
-		padding: 16px;
-		border-radius: 12px;
-		text-align: center;
-		margin: 16px 0;
-	}
-
-	.current-label {
-		font-size: 0.9em;
-		opacity: 0.9;
-		display: block;
-		margin-bottom: 4px;
-	}
-
-	.current-value {
-		font-size: 1.4em;
 		font-weight: 600;
 	}
+	
+	.column-separator {
+		width: 1px;
+		background: #e5e5e7;
+		margin: 12px 0;
+	}
+	
 
 	.error-message {
 		color: #ff3b30;
@@ -297,20 +271,8 @@
 	}
 
 	@media (max-width: 640px) {
-		.time-display {
+		.modern-time-input {
 			padding: 16px;
-			gap: 8px;
 		}
-
-		.time-input {
-			width: 50px;
-			height: 50px;
-			font-size: 1.2em;
-		}
-
-		.time-separator {
-			font-size: 1.5em;
-		}
-
 	}
 </style>

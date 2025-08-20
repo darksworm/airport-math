@@ -176,7 +176,8 @@
 			// Keep the current location in the store so LocationSelector shows map controls
 			// locationStore.setLocation(null);
 		} else if (step === 2) {
-			// Reset later steps only, keep current step data for editing
+			// Reset airport selection and later steps
+			selectedAirport = null;
 			flightInfo = null;
 			selectedRoute = null;
 			departurePreferences = null;
