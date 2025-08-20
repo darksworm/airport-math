@@ -14,7 +14,8 @@
 	};
 	
 	const safetyLevels = [
-		{ value: 1, label: "Aggressive", description: "Minimal buffers, tight timing" },
+		{ value: 0, label: "Ain't Nobody Got Time", description: "Ultimate rush mode - 10min gate buffer" },
+		{ value: 1, label: "Aggressive", description: "Minimal buffers - 30min gate buffer" },
 		{ value: 2, label: "Confident", description: "Some buffer, experienced traveler" },
 		{ value: 3, label: "Moderate", description: "Balanced approach, reasonable buffers" },
 		{ value: 4, label: "Conservative", description: "Extra time for unexpected delays" },
@@ -39,7 +40,7 @@
 		preferences = preferences; // Trigger reactivity
 	}
 	
-	$: currentSafetyLevel = safetyLevels.find(level => level.value === preferences.safetyMarginLevel) || safetyLevels[2];
+	$: currentSafetyLevel = safetyLevels.find(level => level.value === preferences.safetyMarginLevel) || safetyLevels[3];
 	
 	// Calculate live results
 	$: liveCalculation = calculateDepartureTime(flightInfo, selectedRoute, preferences);
@@ -96,12 +97,12 @@
 			
 			<div class="slider-container">
 				<div class="slider-labels">
-					<span class="label-left">Aggressive</span>
+					<span class="label-left">Ain't Nobody Got Time</span>
 					<span class="label-right">Very Safe</span>
 				</div>
 				<input
 					type="range"
-					min="1"
+					min="0"
 					max="5"
 					step="1"
 					value={preferences.safetyMarginLevel}

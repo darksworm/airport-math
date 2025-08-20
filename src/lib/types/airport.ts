@@ -43,7 +43,7 @@ export interface RouteInfo {
 export interface DeparturePreferences {
 	hasCheckedBags: boolean;
 	needsPassportControl: boolean;
-	safetyMarginLevel: number; // 1-5 scale (1=aggressive, 5=very conservative)
+	safetyMarginLevel: number; // 0-5 scale (0=ain't nobody got time, 1=aggressive, 5=very conservative)
 	additionalBuffer: number; // extra minutes user wants
 }
 

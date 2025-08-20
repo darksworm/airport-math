@@ -6,9 +6,9 @@ import type { DepartureCalculation, FlightInfo, RouteInfo, DeparturePreferences 
 function calculateBaggageTime(hasCheckedBags: boolean, safetyLevel: number): number {
 	if (!hasCheckedBags) return 0;
 	
-	// Base time for baggage: 15-30 minutes depending on safety level
-	const baseTime = 15;
-	const safetyMultiplier = (safetyLevel - 1) * 3.75; // 0-15 minutes extra
+	// Base time for baggage: 10-30 minutes depending on safety level
+	const baseTime = 10;
+	const safetyMultiplier = safetyLevel * 4; // 0-20 minutes extra (level 0-5)
 	return Math.round(baseTime + safetyMultiplier);
 }
 
@@ -16,16 +16,16 @@ function calculateBaggageTime(hasCheckedBags: boolean, safetyLevel: number): num
  * Calculate security and passport time based on preferences and safety level
  */
 function calculateSecurityTime(needsPassport: boolean, safetyLevel: number): { security: number, passport: number } {
-	// Base security time: 15-45 minutes depending on safety level
-	const baseSecurityTime = 15;
-	const securitySafetyMultiplier = (safetyLevel - 1) * 7.5; // 0-30 minutes extra
+	// Security time: 10-45 minutes depending on safety level (0-5)
+	const baseSecurityTime = 10;
+	const securitySafetyMultiplier = safetyLevel * 7; // 0-35 minutes extra
 	const securityTime = Math.round(baseSecurityTime + securitySafetyMultiplier);
 	
-	// Passport control time: 20-45 minutes if needed
+	// Passport control time: 10-40 minutes if needed
 	let passportTime = 0;
 	if (needsPassport) {
-		const basePassportTime = 20;
-		const passportSafetyMultiplier = (safetyLevel - 1) * 6.25; // 0-25 minutes extra
+		const basePassportTime = 10;
+		const passportSafetyMultiplier = safetyLevel * 6; // 0-30 minutes extra
 		passportTime = Math.round(basePassportTime + passportSafetyMultiplier);
 	}
 	
@@ -33,13 +33,28 @@ function calculateSecurityTime(needsPassport: boolean, safetyLevel: number): { s
 }
 
 /**
+ * Calculate gate wait time based on safety level (replaces fixed 2h check-in buffer)
+ */
+function calculateGateWaitTime(safetyLevel: number): number {
+	// Gate wait time based on safety level:
+	// Level 0: 10 minutes (ain't nobody got time)
+	// Level 1: 30 minutes (aggressive)
+	// Level 2: 45 minutes (confident)
+	// Level 3: 60 minutes (moderate)
+	// Level 4: 90 minutes (conservative)
+	// Level 5: 120 minutes (very safe)
+	
+	const gateWaitTimes = [10, 30, 45, 60, 90, 120];
+	return gateWaitTimes[Math.min(safetyLevel, 5)];
+}
+
+/**
  * Calculate safety buffer based on safety level
  */
 function calculateSafetyBuffer(safetyLevel: number): number {
-	// Safety buffer: 5-25 minutes based on level
-	const baseBuffer = 5;
-	const levelMultiplier = (safetyLevel - 1) * 5; // 0-20 minutes extra
-	return baseBuffer + levelMultiplier;
+	// Safety buffer: 0-25 minutes based on level (0-5)
+	const levelMultiplier = safetyLevel * 5; // 0-25 minutes
+	return levelMultiplier;
 }
 
 /**
@@ -66,18 +81,15 @@ export function calculateDepartureTime(
 		additionalBuffer: 0
 	};
 	
-	// Base check-in buffer: 2 hours for all flights
-	const checkInBuffer = 2;
-	const checkInMinutes = checkInBuffer * 60;
-	
 	// Calculate each component
 	const travelMinutes = routeInfo.duration;
 	const baggageTime = calculateBaggageTime(prefs.hasCheckedBags, prefs.safetyMarginLevel);
 	const { security: securityTime, passport: passportTime } = calculateSecurityTime(prefs.needsPassportControl, prefs.safetyMarginLevel);
+	const gateWaitTime = calculateGateWaitTime(prefs.safetyMarginLevel);
 	const safetyBuffer = calculateSafetyBuffer(prefs.safetyMarginLevel);
 	
 	// Total buffer time (everything except travel)
-	const totalBuffer = checkInMinutes + baggageTime + securityTime + passportTime + safetyBuffer + prefs.additionalBuffer;
+	const totalBuffer = gateWaitTime + baggageTime + securityTime + passportTime + safetyBuffer + prefs.additionalBuffer;
 	
 	// Calculate total time needed before flight
 	const totalMinutesNeeded = travelMinutes + totalBuffer;
@@ -85,12 +97,12 @@ export function calculateDepartureTime(
 	// Calculate leave time
 	const leaveTime = new Date(flightTime.getTime() - (totalMinutesNeeded * 60 * 1000));
 	
-	// Calculate when you need to arrive at airport (flight time - check-in buffer)
-	const arrivalDeadline = new Date(flightTime.getTime() - (checkInMinutes * 60 * 1000));
+	// Calculate when you need to arrive at airport (flight time - gate wait time)
+	const arrivalDeadline = new Date(flightTime.getTime() - (gateWaitTime * 60 * 1000));
 	
 	return {
 		flightTime,
-		checkInBuffer,
+		checkInBuffer: gateWaitTime / 60, // Convert to hours for compatibility
 		travelTime: travelMinutes,
 		baggageTime,
 		securityTime,
@@ -101,7 +113,7 @@ export function calculateDepartureTime(
 		arrivalDeadline,
 		breakdown: {
 			travel: travelMinutes,
-			checkIn: checkInMinutes,
+			checkIn: gateWaitTime,
 			baggage: baggageTime,
 			security: securityTime,
 			passport: passportTime,
