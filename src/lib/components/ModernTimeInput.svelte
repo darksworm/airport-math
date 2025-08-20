@@ -8,22 +8,9 @@
 	
 	let hours: string = '';
 	let minutes: string = '';
-	let isPM: boolean = false;
-	// Detect user's time format preference (12h vs 24h)
-	const use24Hour = (() => {
-		// Get user's locale
-		const locale = navigator.language || navigator.languages?.[0] || 'en-US';
-		
-		// Force 24-hour for European and most other locales
-		const americanLocales = ['en-US', 'en-CA', 'es-MX'];
-		
-		if (americanLocales.some(l => locale.startsWith(l.split('-')[0]) && locale.includes('US'))) {
-			return false; // Use 12-hour for US locales
-		}
-		
-		// Everyone else gets 24-hour (Europe, Asia, etc.)
-		return true;
-	})();
+	
+	// Debug: log the locale for troubleshooting
+	console.log('Browser locale:', navigator.language || navigator.languages?.[0] || 'unknown');
 	
 	// Parse initial value
 	$: if (value && value !== formatTime()) {
@@ -36,38 +23,17 @@
 		const [h, m] = timeStr.split(':');
 		const hourNum = parseInt(h);
 		
-		if (use24Hour) {
-			hours = hourNum.toString();
-			minutes = m;
-		} else {
-			if (hourNum === 0) {
-				hours = '12';
-				isPM = false;
-			} else if (hourNum <= 12) {
-				hours = hourNum.toString();
-				isPM = false;
-			} else {
-				hours = (hourNum - 12).toString();
-				isPM = true;
-			}
-			minutes = m;
-		}
+		// Always use 24-hour format now
+		hours = hourNum.toString();
+		minutes = m;
 	}
 	
 	function formatTime(): string {
 		if (!hours || !minutes) return '';
 		
-		let h = parseInt(hours);
-		
-		if (use24Hour) {
-			// 24-hour format: just use the hours as-is
-			return `${h.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
-		} else {
-			// 12-hour format: convert to 24-hour for internal storage
-			if (isPM && h !== 12) h += 12;
-			if (!isPM && h === 12) h = 0;
-			return `${h.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
-		}
+		const h = parseInt(hours);
+		// Always 24-hour format now
+		return `${h.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
 	}
 	
 	function handleTimeChange() {
@@ -82,13 +48,9 @@
 		let val = target.value.replace(/\D/g, '');
 		if (val.length > 2) val = val.slice(-2);
 		
-		if (use24Hour) {
-			if (parseInt(val) > 23) val = '23';
-			if (parseInt(val) < 0 && val.length === 2) val = '0';
-		} else {
-			if (parseInt(val) > 12) val = '12';
-			if (parseInt(val) < 1 && val.length === 2) val = '1';
-		}
+		// 24-hour validation: 0-23
+		if (parseInt(val) > 23) val = '23';
+		if (parseInt(val) < 0 && val.length === 2) val = '0';
 		
 		hours = val;
 		handleTimeChange();
@@ -103,10 +65,6 @@
 		handleTimeChange();
 	}
 	
-	function toggleAmPm() {
-		isPM = !isPM;
-		handleTimeChange();
-	}
 	
 </script>
 
@@ -124,7 +82,7 @@
 					type="text"
 					bind:value={hours}
 					on:input={handleHourChange}
-					placeholder={use24Hour ? "14" : "12"}
+					placeholder="16"
 					class="time-input hour-input"
 					maxlength="2"
 					autofocus
@@ -139,18 +97,12 @@
 					type="text"
 					bind:value={minutes}
 					on:input={handleMinuteChange}
-					placeholder="00"
+					placeholder="30"
 					class="time-input minute-input"
 					maxlength="2"
 				/>
 				<span class="field-label">Min</span>
 			</div>
-			
-			{#if !use24Hour}
-				<button class="ampm-toggle" class:pm={isPM} on:click={toggleAmPm}>
-					{isPM ? 'PM' : 'AM'}
-				</button>
-			{/if}
 		</div>
 	</div>
 	
