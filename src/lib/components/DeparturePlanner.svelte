@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { DeparturePreferences, FlightInfo, RouteInfo, DepartureCalculation } from '$lib/types/airport';
-	import { calculateDepartureTime, formatTime } from '$lib/services/departure';
+	import { calculateDepartureTime, formatTime, getTimeUntilDeparture } from '$lib/services/departure';
 	
 	export let flightInfo: FlightInfo;
 	export let selectedRoute: RouteInfo;
@@ -54,6 +54,32 @@
 		if (mins === 0) return `${hours}h`;
 		return `${hours}h ${mins}m`;
 	}
+	
+	function formatRelativeTime(timeUntil: ReturnType<typeof getTimeUntilDeparture>): string {
+		if (timeUntil.isOverdue) {
+			if (timeUntil.totalMinutes < 60) {
+				return `${timeUntil.totalMinutes}m ago`;
+			}
+			return `${timeUntil.hours}h ${timeUntil.minutes}m ago`;
+		}
+		
+		if (timeUntil.totalMinutes < 60) {
+			return `in ${timeUntil.totalMinutes}m`;
+		}
+		
+		if (timeUntil.hours === 1 && timeUntil.minutes === 0) {
+			return 'in about 1 hour';
+		}
+		
+		if (timeUntil.minutes === 0) {
+			return `in about ${timeUntil.hours} hours`;
+		}
+		
+		return `in about ${timeUntil.hours}h ${timeUntil.minutes}m`;
+	}
+	
+	// Calculate relative time for leave home
+	$: leaveTimeUntil = getTimeUntilDeparture(liveCalculation.leaveTime);
 </script>
 
 <div class="departure-planner">
@@ -136,29 +162,29 @@
 		</div>
 	</div>
 	
-	<div class="flight-info">
-		<div class="info-item">
-			<span class="info-label">Flight Time:</span>
-			<span class="info-value">{flightInfo.departureTime}</span>
-		</div>
-		<div class="info-item">
-			<span class="info-label">Transport:</span>
-			<span class="info-value">{selectedRoute.mode.icon} {selectedRoute.mode.name}</span>
-		</div>
-	</div>
-	
 	<!-- Live Results Preview -->
 	<div class="live-results">
 		<h3>📊 Live Timing Preview</h3>
 		
-		<div class="main-timing">
-			<div class="leave-time">
+		<!-- Journey Timeline -->
+		<div class="journey-timeline">
+			<div class="timeline-step">
 				<span class="time-large">{formatTime(liveCalculation.leaveTime, { use24Hour: true })}</span>
-				<span class="time-label">Leave Home</span>
+				<span class="time-label">🏠 Leave Home</span>
 			</div>
-			<div class="total-time">
-				<span class="duration">{formatMinutes(liveCalculation.totalBuffer + liveCalculation.travelTime)}</span>
-				<span class="duration-label">Total Time Needed</span>
+			
+			<div class="timeline-arrow">→</div>
+			
+			<div class="timeline-step">
+				<span class="time-large">{formatTime(liveCalculation.arrivalDeadline, { use24Hour: true })}</span>
+				<span class="time-label">🛬 Airport Arrival</span>
+			</div>
+			
+			<div class="timeline-arrow">→</div>
+			
+			<div class="timeline-step">
+				<span class="time-large">{formatTime(liveCalculation.flightTime, { use24Hour: true })}</span>
+				<span class="time-label">✈️ Flight Takeoff</span>
 			</div>
 		</div>
 		
@@ -193,10 +219,12 @@
 			</div>
 		</div>
 		
-		<div class="confirm-section">
-			<button class="confirm-plan-btn" on:click={confirmPreferences}>
-				✈️ Confirm Departure Plan
-			</button>
+		<!-- Total Time Summary -->
+		<div class="total-summary">
+			<div class="total-time">
+				<span class="duration">{formatMinutes(liveCalculation.totalBuffer + liveCalculation.travelTime)}</span>
+				<span class="duration-label">Total Time Needed</span>
+			</div>
 		</div>
 	</div>
 </div>
@@ -420,18 +448,80 @@
 		font-size: 1.1em;
 	}
 
-	.main-timing {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 16px;
+	/* Journey Timeline Styles */
+	.journey-timeline {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		margin-bottom: 20px;
-		padding: 16px;
+		padding: 20px;
 		background: white;
-		border-radius: 8px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		border-radius: 12px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		overflow-x: auto;
 	}
 
-	.leave-time, .total-time {
+	.timeline-step {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		min-width: 120px;
+	}
+
+	.timeline-step:first-child {
+		background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
+		color: white;
+		padding: 20px;
+		border-radius: 16px;
+		box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+		transform: scale(1.1);
+	}
+
+	.timeline-step:first-child .time-large {
+		font-size: 2.2em;
+		font-weight: 900;
+		text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		color: white;
+	}
+
+	.timeline-step:first-child .time-label {
+		color: rgba(255, 255, 255, 0.9);
+		font-weight: 600;
+		font-size: 0.9em;
+	}
+
+	.relative-time {
+		font-size: 0.8em;
+		opacity: 0.7;
+		font-style: italic;
+		margin-top: 4px;
+	}
+
+	.timeline-step:first-child .relative-time {
+		color: rgba(255, 255, 255, 0.8);
+	}
+
+	.timeline-arrow {
+		font-size: 1.5em;
+		color: #007aff;
+		margin: 0 8px;
+		font-weight: bold;
+		flex-shrink: 0;
+	}
+
+	.total-summary {
+		display: flex;
+		justify-content: center;
+		margin: 20px 0;
+		padding: 16px;
+		background: #f0f8ff;
+		border: 2px solid #007aff;
+		border-radius: 12px;
+		color: #333;
+	}
+
+	.total-time {
 		text-align: center;
 	}
 
@@ -487,27 +577,6 @@
 		letter-spacing: 0.5px;
 	}
 
-	.confirm-section {
-		text-align: center;
-	}
-
-	.confirm-plan-btn {
-		background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
-		color: white;
-		border: none;
-		padding: 14px 28px;
-		border-radius: 8px;
-		font-size: 16px;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s;
-		min-width: 200px;
-	}
-
-	.confirm-plan-btn:hover {
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-	}
 
 	@media (max-width: 640px) {
 		.departure-planner {
@@ -519,9 +588,29 @@
 			gap: 12px;
 		}
 
-		.main-timing {
-			grid-template-columns: 1fr;
-			gap: 12px;
+		.journey-timeline {
+			flex-direction: column;
+			gap: 16px;
+			padding: 16px;
+		}
+		
+		.timeline-arrow {
+			transform: rotate(90deg);
+			margin: 4px 0;
+		}
+		
+		.timeline-step {
+			min-width: auto;
+			width: 100%;
+		}
+		
+		.timeline-step:first-child {
+			transform: scale(1.05);
+			margin: 8px 0;
+		}
+		
+		.timeline-step:first-child .time-large {
+			font-size: 1.8em;
 		}
 
 		.timing-breakdown {

@@ -97,8 +97,8 @@ export function calculateDepartureTime(
 	// Calculate leave time
 	const leaveTime = new Date(flightTime.getTime() - (totalMinutesNeeded * 60 * 1000));
 	
-	// Calculate when you need to arrive at airport (flight time - gate wait time)
-	const arrivalDeadline = new Date(flightTime.getTime() - (gateWaitTime * 60 * 1000));
+	// Calculate actual airport arrival time (leave time + travel time)
+	const arrivalDeadline = new Date(leaveTime.getTime() + (travelMinutes * 60 * 1000));
 	
 	return {
 		flightTime,

@@ -90,11 +90,15 @@
 			}, 10);
 		}
 		
-		// Handle tab/enter to advance to next field
+		// Handle tab/enter to advance to next field or submit
 		if (event.key === 'Tab' || event.key === 'Enter') {
 			if (field === 'hour' && target.value.length > 0) {
 				event.preventDefault();
 				minuteInput?.focus();
+			} else if (field === 'minute' && target.value.length > 0) {
+				// Submit the time when pressing Enter in the minutes field
+				event.preventDefault();
+				dispatch('submit', formatTime());
 			}
 		}
 	}
@@ -144,13 +148,6 @@
 		</div>
 	</div>
 	
-	<!-- Current Selection Display -->
-	{#if value}
-		<div class="current-time">
-			<span class="current-label">Selected Time:</span>
-			<span class="current-value">{value}</span>
-		</div>
-	{/if}
 	
 	{#if error}
 		<div class="error-message">{error}</div>

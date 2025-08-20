@@ -52,6 +52,7 @@
 		value={flightTime}
 		error={timeError}
 		on:change={handleTimeChange}
+		on:submit={handleConfirm}
 	/>
 
 	
